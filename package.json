@@ -8,9 +8,13 @@
     "projects/*"
   ],
   "scripts": {
+    "build": "tsc -b tsconfig.workspace.json",
+    "decrypt:secret": "node scripts/decrypt-secret.mjs",
+    "generate:key": "node scripts/generate-secret-key.mjs",
     "test:orangehrm": "playwright test -c projects/orangehrm-e2e/playwright.config.ts",
     "test:orangehrm:headed": "playwright test -c projects/orangehrm-e2e/playwright.config.ts --headed",
     "test:all": "npm run test --workspaces --if-present",
+    "encrypt:secret": "node scripts/encrypt-secret.mjs",
     "typecheck": "tsc -b tsconfig.workspace.json"
   },
   "devDependencies": {
@@ -18,5 +22,8 @@
     "@types/node": "^25.6.0",
     "prettier": "^3.3.1",
     "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
   }
 }

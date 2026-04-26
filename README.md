@@ -21,10 +21,48 @@ projects/
 
 ```bash
 npm install
+npm run build
 npm run typecheck
 npm run test:orangehrm
 npm run test:all
 ```
+
+## Encrypted secrets
+
+- store test passwords in JSON as `encryptedPassword`
+- the runtime key comes from the `SECRET_KEY` environment variable
+- keep the real key outside git, for example in a local `.env` file or CI secret
+- `.env.demo` is only a template; generate your own key and re-encrypt secrets before committing real test credentials
+- new encrypted values are stored as `iv:authTag:cipherText`
+- the framework still accepts older `enc:v1:...` values during migration
+- generate a brand new key:
+
+```bash
+npm run generate:key
+```
+
+- example output:
+
+```bash
+SECRET_KEY=your-generated-key
+```
+
+- encrypt plaintext with the key from `process.env.SECRET_KEY`:
+
+```bash
+npm run encrypt:secret -- "admin123"
+```
+
+- decrypt an encrypted value with the key from `process.env.SECRET_KEY`:
+
+```bash
+npm run decrypt:secret -- "iv:authTag:cipherText"
+```
+
+- set `SECRET_KEY=...` in the machine environment before running encrypt or decrypt commands
+- if `SECRET_KEY` is missing, the encrypt and decrypt scripts exit immediately with an error
+- copy the encrypted output into your JSON data as `encryptedPassword`
+- after generating new encrypted values, replace the committed sample values in your JSON data
 
 ## Add a new subproject
 

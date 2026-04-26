@@ -11,7 +11,7 @@
   {
     "name": "Empty username",
     "username": "",
-    "password": "admin123",
+    "encryptedPassword": "FwKLGoPrHgupbGVO:oK7JM7WUW3myHYwzWl6d2g:VkUlki6yhIs",
     "expected": {
       "type": "error",
       "messages": ["Required"]
@@ -29,7 +29,7 @@
   {
     "name": "Invalid credentials",
     "username": "wrong",
-    "password": "wrong123",
+    "encryptedPassword": "FwKLGoPrHgupbGVO:oK7JM7WUW3myHYwzWl6d2g:VkUlki6yhIs",
     "expected": {
       "type": "error",
       "messages": ["Invalid credentials"]
@@ -38,7 +38,7 @@
   {
     "name": "Valid login",
     "username": "Admin",
-    "password": "admin123",
+    "encryptedPassword": "FwKLGoPrHgupbGVO:oK7JM7WUW3myHYwzWl6d2g:VkUlki6yhIs",
     "expected": {
       "type": "success",
       "urlContains": "dashboard"
