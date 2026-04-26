@@ -31,8 +31,10 @@ test.describe('Login tests', () => {
       await loginPage.login(data.username, resolvePassword(data));
 
       if (data.expected.type === 'error') {
-        await expect(loginPage.errorMessages).toHaveCount(data.expected.messages.length);
-        await expect.soft(loginPage.errorMessages.first()).toBeVisible();
+        await expect(loginPage.errorMessages.locator()).toHaveCount(
+          data.expected.messages.length,
+        );
+        await expect.soft(loginPage.errorMessages.first().locator()).toBeVisible();
 
         const errors = await loginPage.getErrors();
         expect(errors).toEqual(data.expected.messages);

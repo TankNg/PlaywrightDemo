@@ -1,18 +1,18 @@
-import type { Locator, Page } from '@playwright/test';
-import { BasePage } from '@core-playwright/core';
+import type { Page } from '@playwright/test';
+import { BasePage, Button, Label, Textbox } from '@core-playwright/core';
 
 export class LoginPage extends BasePage {
-  readonly username: Locator;
-  readonly password: Locator;
-  readonly loginButton: Locator;
-  readonly errorMessages: Locator;
+  readonly username: Textbox;
+  readonly password: Textbox;
+  readonly loginButton: Button;
+  readonly errorMessages: Label;
 
   constructor(page: Page) {
     super(page);
-    this.username = this.locator('input[name="username"]');
-    this.password = this.locator('input[name="password"]');
-    this.loginButton = this.locator('button[type="submit"]');
-    this.errorMessages = this.locator(
+    this.username = this.textbox('input[name="username"]');
+    this.password = this.textbox('input[name="password"]');
+    this.loginButton = this.button('button[type="submit"]');
+    this.errorMessages = this.label(
       '.oxd-alert-content-text, .oxd-input-field-error-message',
     );
   }
@@ -22,8 +22,8 @@ export class LoginPage extends BasePage {
   }
 
   async login(user: string, pass: string): Promise<void> {
-    await this.username.fill(user);
-    await this.password.fill(pass);
+    await this.username.enterText(user);
+    await this.password.enterText(pass);
     await this.loginButton.click();
   }
 
@@ -32,7 +32,6 @@ export class LoginPage extends BasePage {
       return [];
     }
 
-    const texts = await this.errorMessages.allTextContents();
-    return texts.map((text) => text.trim()).filter(Boolean);
+    return this.errorMessages.getTexts();
   }
 }
