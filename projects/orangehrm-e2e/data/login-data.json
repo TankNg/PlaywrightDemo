@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Empty username & password",
+    "username": "",
+    "password": "",
+    "expected": {
+      "type": "error",
+      "messages": ["Required", "Required"]
+    }
+  },
+  {
+    "name": "Empty username",
+    "username": "",
+    "password": "admin123",
+    "expected": {
+      "type": "error",
+      "messages": ["Required"]
+    }
+  },
+  {
+    "name": "Empty password",
+    "username": "Admin",
+    "password": "",
+    "expected": {
+      "type": "error",
+      "messages": ["Required"]
+    }
+  },
+  {
+    "name": "Invalid credentials",
+    "username": "wrong",
+    "password": "wrong123",
+    "expected": {
+      "type": "error",
+      "messages": ["Invalid credentials"]
+    }
+  },
+  {
+    "name": "Valid login",
+    "username": "Admin",
+    "password": "admin123",
+    "expected": {
+      "type": "success",
+      "urlContains": "dashboard"
+    }
+  }
+]

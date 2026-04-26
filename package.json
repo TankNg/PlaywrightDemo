@@ -1,0 +1,22 @@
+{
+  "name": "playwright-framework-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "projects/*"
+  ],
+  "scripts": {
+    "test:orangehrm": "playwright test -c projects/orangehrm-e2e/playwright.config.ts",
+    "test:orangehrm:headed": "playwright test -c projects/orangehrm-e2e/playwright.config.ts --headed",
+    "test:all": "npm run test --workspaces --if-present",
+    "typecheck": "tsc -b tsconfig.workspace.json"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0",
+    "prettier": "^3.3.1",
+    "typescript": "^5.2.2"
+  }
+}
