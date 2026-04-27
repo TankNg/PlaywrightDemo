@@ -11,6 +11,35 @@ projects/
   orangehrm-e2e/         Example consumer project
 ```
 
+## Project structure details
+
+### Core package (`packages/core-playwright`)
+
+- `src/api`: shared API fixture and `ApiClient` helpers for API assertions
+- `src/config`: reusable Playwright config builder for all projects
+- `src/elements`: common element wrappers (`Button`, `Textbox`, `Checkbox`, etc.)
+- `src/pages`: base page abstraction (`BasePage`) used by project page objects
+- `src/types`: shared framework type contracts for API, elements, and reusable helpers
+- `src/utils`: shared utilities (paths, test tags, crypto, logger, data loader)
+- `src/index.ts`: public exports used by consumer projects
+
+### Consumer project (`projects/orangehrm-e2e`)
+
+- `src/pages`: project-specific Page Object Model classes (for example `LoginPage`)
+- `src/types`: project domain types used by pages, test payloads, fixtures, and data models
+- `src/utils`: project-only helper functions used by that project (mapping, formatters, builders, custom assertions, etc.)
+- `tests`: Playwright test specs (`*.spec.ts`) that use page objects and fixtures
+- `playwright.config.ts`: project-level config that calls `createPlaywrightConfig(...)`
+
+### Recommended flow (`src/pages` + `tests`)
+
+1. Put selectors and UI actions in page classes under `src/pages`
+2. Keep test specs in `tests` focused on scenarios and assertions
+3. Reuse shared wrappers from `@core-playwright/core` instead of raw locator logic in tests
+4. Keep project type definitions close to usage in `src/types`
+5. Place helper code that is not reusable across projects in project-local `src/utils`
+6. If a utility becomes reusable across projects, move it into `packages/core-playwright/src/utils`
+
 ## How reuse works
 
 - `packages/core-playwright` is published internally as `@core-playwright/core`
