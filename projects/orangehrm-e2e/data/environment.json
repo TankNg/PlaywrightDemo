@@ -3,7 +3,7 @@
     "PW_PARALLEL": false,
     "PW_RUN_MODE": "headless",
     "PW_BROWSERS": "chromium",
-    "PW_GROUPS": "smoke"
+    "PW_GROUPS": "regression,smoke"
   },
   "environments": {
     "qat": {

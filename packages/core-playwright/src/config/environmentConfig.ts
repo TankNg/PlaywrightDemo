@@ -8,6 +8,7 @@ import {
 export type EnvValue = string | number | boolean;
 
 export interface EnvironmentJsonConfig {
+  run?: Record<string, EnvValue>;
   environments: Record<string, Record<string, EnvValue>>;
 }
 
@@ -46,7 +47,8 @@ export function loadEnvironmentConfigFromJson(
     throw new Error(`Environment "${env}" is not configured in ${filePath}.`);
   }
 
-  applyEnv(options.runConfig ?? DEFAULT_RUN_CONFIG);
+  const runConfig = options.runConfig ?? config.run ?? DEFAULT_RUN_CONFIG;
+  applyEnv(runConfig);
   applyEnv(envValues);
 
   return env;

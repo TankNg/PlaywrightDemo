@@ -6,5 +6,6 @@ export interface LoginTestData {
   name: string;
   tags?: string[];
   username?: string;
+  password?: string;
   expected: ExpectedResult;
 }

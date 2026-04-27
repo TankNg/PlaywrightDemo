@@ -16,13 +16,14 @@
     "password": "FwKLGoPrHgupbGVO:oK7JM7WUW3myHYwzWl6d2g:VkUlki6yhIs",
     "expected": {
       "type": "error",
-      "messages": ["Required", "Required"]
+      "messages": ["Required"]
     }
   },
   {
     "name": "Empty password",
     "tags": ["regression"],
     "username": "Admin",
+    "password": "",
     "expected": {
       "type": "error",
       "messages": ["Required"]

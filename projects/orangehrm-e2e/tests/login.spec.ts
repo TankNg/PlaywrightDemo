@@ -13,7 +13,10 @@ loadEnvironmentConfigFromJson({
   metaUrl: import.meta.url,
   configRelativePath: '../data/environment.json',
 });
-const loginDataPath = resolveFromModule(import.meta.url, '../data/login-data.json');
+const loginDataPath = resolveFromModule(
+  import.meta.url,
+  '../data/login-data.json',
+);
 const loginData = loadJson<LoginTestData[]>(loginDataPath);
 const credentialStore = createCredentialStoreFromJson({
   metaUrl: import.meta.url,
@@ -25,11 +28,10 @@ test.describe('Login tests', () => {
     test(formatTaggedTestName(data.name, data.tags), async ({ page }) => {
       const loginPage = new LoginPage(page);
       const username = data.username?.trim() ?? '';
-      const credential = username
-        ? credentialStore.get(username)
-        : undefined;
-      const password = credential?.getPassword() ?? '';
-
+      let password = data.password;
+      if (password === undefined) {
+        password = credentialStore.get(username)?.getPassword() ?? '';
+      }
       await loginPage.goto();
       await loginPage.login(username, password);
 
