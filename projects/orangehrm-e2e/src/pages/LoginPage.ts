@@ -28,10 +28,6 @@ export class LoginPage extends BasePage {
   }
 
   async getErrors(): Promise<string[]> {
-    if (!(await this.errorMessages.first().isVisible())) {
-      return [];
-    }
-
     return this.errorMessages.getTexts();
   }
 }

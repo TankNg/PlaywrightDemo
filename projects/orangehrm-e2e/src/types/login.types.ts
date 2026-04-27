@@ -5,7 +5,6 @@ export type ExpectedResult =
 export interface LoginTestData {
   name: string;
   username: string;
-  password?: string;
   encryptedPassword?: string;
   expected: ExpectedResult;
 }

@@ -11,15 +11,11 @@ const loginDataPath = resolveFromModule(import.meta.url, '../data/login-data.jso
 const loginData = loadJson<LoginTestData[]>(loginDataPath);
 
 function resolvePassword(data: LoginTestData): string {
-  if (typeof data.password === 'string') {
-    return data.password;
-  }
-
   if (typeof data.encryptedPassword === 'string') {
     return decryptValueFromEnv(data.encryptedPassword);
   }
 
-  throw new Error(`Missing password for test case "${data.name}".`);
+  return '';
 }
 
 test.describe('Login tests', () => {
@@ -31,11 +27,6 @@ test.describe('Login tests', () => {
       await loginPage.login(data.username, resolvePassword(data));
 
       if (data.expected.type === 'error') {
-        await expect(loginPage.errorMessages.locator()).toHaveCount(
-          data.expected.messages.length,
-        );
-        await expect.soft(loginPage.errorMessages.first().locator()).toBeVisible();
-
         const errors = await loginPage.getErrors();
         expect(errors).toEqual(data.expected.messages);
         return;

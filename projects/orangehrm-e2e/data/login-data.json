@@ -2,7 +2,6 @@
   {
     "name": "Empty username & password",
     "username": "",
-    "password": "",
     "expected": {
       "type": "error",
       "messages": ["Required", "Required"]
@@ -20,7 +19,6 @@
   {
     "name": "Empty password",
     "username": "Admin",
-    "password": "",
     "expected": {
       "type": "error",
       "messages": ["Required"]

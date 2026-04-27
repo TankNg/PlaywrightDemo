@@ -14,9 +14,9 @@ export interface FindElementOptions {
 }
 
 export class BaseElement {
-  protected readonly scope: SearchScope;
-  protected readonly selector: SelectorDefinition;
-  protected readonly index?: number;
+  private readonly scope: SearchScope;
+  private readonly selector: SelectorDefinition;
+  private readonly index?: number;
 
   constructor(scope: SearchScope, selector: SelectorInput, index?: number) {
     this.scope = scope;
@@ -24,12 +24,12 @@ export class BaseElement {
     this.index = index;
   }
 
-  protected get resolvedLocator(): Locator {
+  private get resolvedLocator(): Locator {
     const locator = this.scope.locator(toPlaywrightSelector(this.selector));
     return this.index === undefined ? locator : locator.nth(this.index);
   }
 
-  protected newInstance(scope: SearchScope, selector: SelectorInput, index?: number): this {
+  private newInstance(scope: SearchScope, selector: SelectorInput, index?: number): this {
     const ElementType = this.constructor as new (
       scope: SearchScope,
       selector: SelectorInput,
@@ -56,22 +56,20 @@ export class BaseElement {
   }
 
   async click(): Promise<void> {
-    await this.waitForVisible();
     await this.resolvedLocator.click();
   }
 
   async fill(value: string): Promise<void> {
-    await this.waitForVisible();
+    await this.clear();
     await this.resolvedLocator.fill(value);
   }
 
   async type(value: string): Promise<void> {
-    await this.waitForVisible();
+    await this.clear();
     await this.resolvedLocator.pressSequentially(value);
   }
 
-  async clear(): Promise<void> {
-    await this.waitForVisible();
+  private async clear(): Promise<void> {
     await this.resolvedLocator.clear();
   }
 
