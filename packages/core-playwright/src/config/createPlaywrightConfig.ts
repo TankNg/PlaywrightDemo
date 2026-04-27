@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { defineConfig, devices, type PlaywrightTestConfig } from '@playwright/test';
 import dotenv from 'dotenv';
+import { getLogger } from '../utils/logger.js';
 
 export interface CorePlaywrightProjectOptions {
   testDir: string;
@@ -15,7 +16,11 @@ export interface CorePlaywrightProjectOptions {
 const SUPPORTED_BROWSERS = ['chromium', 'firefox', 'webkit'] as const;
 
 type SupportedBrowser = (typeof SUPPORTED_BROWSERS)[number];
+const logger = getLogger('core.config');
 
+/**
+ * Parses boolean-like environment values.
+ */
 function parseBoolean(
   value: string | undefined,
   defaultValue: boolean,
@@ -27,6 +32,9 @@ function parseBoolean(
   return value.trim().toLowerCase() === 'true';
 }
 
+/**
+ * Splits a comma-separated string into trimmed items.
+ */
 function parseCsv(value: string | undefined): string[] {
   if (!value) {
     return [];
@@ -38,6 +46,9 @@ function parseCsv(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Resolves valid browser names from environment input.
+ */
 function resolveBrowsers(value: string | undefined): SupportedBrowser[] {
   const browsers = parseCsv(value)
     .map((browser) => browser.toLowerCase())
@@ -48,14 +59,23 @@ function resolveBrowsers(value: string | undefined): SupportedBrowser[] {
   return browsers.length > 0 ? browsers : ['chromium'];
 }
 
+/**
+ * Resolves execution mode from environment input.
+ */
 function resolveRunMode(value: string | undefined): 'headless' | 'headed' {
   return value?.trim().toLowerCase() === 'headed' ? 'headed' : 'headless';
 }
 
+/**
+ * Escapes a string for safe regex construction.
+ */
 function escapeForRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Creates a grep regex from configured test groups.
+ */
 function resolveGroupGrep(value: string | undefined): RegExp | undefined {
   const groups = parseCsv(value);
   if (groups.length === 0) {
@@ -66,6 +86,9 @@ function resolveGroupGrep(value: string | undefined): RegExp | undefined {
   return new RegExp(pattern);
 }
 
+/**
+ * Builds a Playwright project config for a specific browser.
+ */
 function resolveProject(
   browserName: SupportedBrowser,
 ): NonNullable<PlaywrightTestConfig['projects']>[number] {
@@ -84,6 +107,9 @@ function resolveProject(
   };
 }
 
+/**
+ * Loads environment variables from an env file by TEST_ENV.
+ */
 function loadProjectEnv(envDir: string | undefined): void {
   const env = process.env.TEST_ENV || 'qat';
   const envFile = `.env.${env}`;
@@ -91,13 +117,16 @@ function loadProjectEnv(envDir: string | undefined): void {
   const result = dotenv.config({ path: envPath });
 
   if (result.error) {
-    console.warn(`Env file not found: ${envPath}`);
+    logger.warn(`Env file not found: ${envPath}`);
     return;
   }
 
-  console.log(`Running with env: ${env} (${envPath})`);
+  logger.info(`Running with env: ${env} (${envPath})`);
 }
 
+/**
+ * Creates a shared Playwright configuration for framework projects.
+ */
 export function createPlaywrightConfig(
   options: CorePlaywrightProjectOptions,
 ): PlaywrightTestConfig {
@@ -107,6 +136,9 @@ export function createPlaywrightConfig(
   const runMode = resolveRunMode(process.env.PW_RUN_MODE);
   const browsers = resolveBrowsers(process.env.PW_BROWSERS);
   const grep = resolveGroupGrep(process.env.PW_GROUPS);
+  logger.debug(
+    `Resolved playwright config: parallel=${runInParallel}, mode=${runMode}, browsers=${browsers.join(',')}`,
+  );
 
   return defineConfig({
     testDir: options.testDir,

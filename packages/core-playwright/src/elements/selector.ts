@@ -7,6 +7,9 @@ export interface SelectorDefinition {
 
 export type SelectorInput = string | SelectorDefinition;
 
+/**
+ * Normalizes selector input into a typed selector object.
+ */
 export function normalizeSelector(selector: SelectorInput): SelectorDefinition {
   if (typeof selector !== 'string') {
     return selector;
@@ -18,6 +21,9 @@ export function normalizeSelector(selector: SelectorInput): SelectorDefinition {
   };
 }
 
+/**
+ * Converts a selector definition to Playwright selector syntax.
+ */
 export function toPlaywrightSelector(selector: SelectorDefinition): string {
   if (selector.type === 'css') {
     return selector.value;
@@ -26,6 +32,9 @@ export function toPlaywrightSelector(selector: SelectorDefinition): string {
   return `${selector.type}=${selector.value}`;
 }
 
+/**
+ * Infers selector type from selector text.
+ */
 function inferSelectorType(selector: string): SelectorType {
   if (selector.startsWith('xpath=')) {
     return 'xpath';
@@ -46,6 +55,9 @@ function inferSelectorType(selector: string): SelectorType {
   return 'css';
 }
 
+/**
+ * Removes Playwright selector prefixes when present.
+ */
 function stripPlaywrightPrefix(selector: string): string {
   if (selector.startsWith('xpath=')) {
     return selector.slice('xpath='.length);

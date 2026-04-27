@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
-import { BasePage, Button, Label, Textbox } from '@core-playwright/core';
+import { BasePage, Button, getLogger, Label, Textbox } from '@core-playwright/core';
+
+const logger = getLogger('orangehrm.page.login');
 
 export class LoginPage extends BasePage {
   readonly username: Textbox;
@@ -18,10 +20,12 @@ export class LoginPage extends BasePage {
   }
 
   async goto(): Promise<void> {
+    logger.info('Opening login page');
     await this.navigate('/');
   }
 
   async login(user: string, pass: string): Promise<void> {
+    logger.info(`Login with username: ${user}`);
     await this.username.enterText(user);
     await this.password.enterText(pass);
     await this.loginButton.click();

@@ -1,3 +1,6 @@
+/**
+ * Appends normalized @tags to a test name.
+ */
 export function formatTaggedTestName(name: string, tags: readonly string[] = []): string {
   if (tags.length === 0) {
     return name;
