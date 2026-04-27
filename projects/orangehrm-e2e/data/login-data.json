@@ -1,6 +1,7 @@
 [
   {
     "name": "Empty username & password",
+    "tags": ["regression"],
     "username": "",
     "expected": {
       "type": "error",
@@ -9,6 +10,7 @@
   },
   {
     "name": "Empty username",
+    "tags": ["regression"],
     "username": "",
     "encryptedPassword": "FwKLGoPrHgupbGVO:oK7JM7WUW3myHYwzWl6d2g:VkUlki6yhIs",
     "expected": {
@@ -18,6 +20,7 @@
   },
   {
     "name": "Empty password",
+    "tags": ["regression"],
     "username": "Admin",
     "expected": {
       "type": "error",
@@ -26,6 +29,7 @@
   },
   {
     "name": "Invalid credentials",
+    "tags": ["regression"],
     "username": "wrong",
     "encryptedPassword": "FwKLGoPrHgupbGVO:oK7JM7WUW3myHYwzWl6d2g:VkUlki6yhIs",
     "expected": {
@@ -35,6 +39,7 @@
   },
   {
     "name": "Valid login",
+    "tags": ["smoke"],
     "username": "Admin",
     "encryptedPassword": "FwKLGoPrHgupbGVO:oK7JM7WUW3myHYwzWl6d2g:VkUlki6yhIs",
     "expected": {

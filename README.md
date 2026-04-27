@@ -27,12 +27,53 @@ npm run test:orangehrm
 npm run test:all
 ```
 
+## Test execution config
+
+- each Playwright project loads its own env file
+- set `envDir` in that project's `playwright.config.ts`
+- the framework reads `TEST_ENV` and loads `.env.<value>` from that project directory
+- if `TEST_ENV` is not set, the default is `qat`
+- example files for a project are `projects/orangehrm-e2e/.env.qat`, `.env.stg`, and `.env.prod`
+- `PW_PARALLEL=false` runs with a single worker by default; set `true` to allow parallel execution
+- `PW_RUN_MODE=headless` is the default; set `headed` to open the browser UI
+- `PW_BROWSERS=chromium` is the default; provide a comma-separated list such as `chromium,firefox`
+- `PW_GROUPS=` is optional; provide a comma-separated list such as `smoke` or `smoke,regression`
+- group membership is declared per test with tags, which are appended to the Playwright test title as `@smoke`, `@regression`, and so on
+
+Example:
+
+```bash
+TEST_ENV=qat npm run test:orangehrm
+TEST_ENV=stg npm run test:orangehrm
+TEST_ENV=prod PW_BROWSERS=chromium,firefox npm run test:orangehrm
+```
+
+Project config example:
+
+```ts
+import { createPlaywrightConfig, resolveFromModule } from '@core-playwright/core';
+
+export default createPlaywrightConfig({
+  envDir: resolveFromModule(import.meta.url, '.'),
+  testDir: './tests',
+  baseURL: 'https://opensource-demo.orangehrmlive.com',
+});
+```
+
+Project env example:
+
+```bash
+PW_PARALLEL=false
+PW_RUN_MODE=headless
+PW_BROWSERS=chromium
+PW_GROUPS=smoke
+```
+
 ## Encrypted secrets
 
 - store test passwords in JSON as `encryptedPassword`
 - the runtime key comes from the `SECRET_KEY` environment variable
-- keep the real key outside git, for example in a local `.env` file or CI secret
-- `.env.demo` is only a template; generate your own key and re-encrypt secrets before committing real test credentials
+- keep the real key outside git and manage it separately from the Playwright runtime `.env` file, for example as a machine-level environment variable or CI secret
 - new encrypted values are stored as `iv:authTag:cipherText`
 - the framework still accepts older `enc:v1:...` values during migration
 - generate a brand new key:

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   decryptValueFromEnv,
+  formatTaggedTestName,
   loadJson,
   resolveFromModule,
 } from '@core-playwright/core';
@@ -20,7 +21,7 @@ function resolvePassword(data: LoginTestData): string {
 
 test.describe('Login tests', () => {
   loginData.forEach((data) => {
-    test(data.name, async ({ page }) => {
+    test(formatTaggedTestName(data.name, data.tags), async ({ page }) => {
       const loginPage = new LoginPage(page);
 
       await loginPage.goto();
