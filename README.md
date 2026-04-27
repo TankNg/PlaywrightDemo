@@ -105,6 +105,56 @@ npm run decrypt:secret -- "iv:authTag:cipherText"
 - copy the encrypted output into your JSON data as `encryptedPassword`
 - after generating new encrypted values, replace the committed sample values in your JSON data
 
+## API test support
+
+- `@core-playwright/core` now includes a reusable `ApiClient`
+- use `createApiTest()` to get an `api` fixture backed by Playwright's request context
+- set `API_BASE_URL` in the project env file when API and UI targets differ
+- if `API_BASE_URL` is missing, the API fixture falls back to `BASE_URL`
+
+Example:
+
+```ts
+import { expect } from '@playwright/test';
+import {
+  createApiTest,
+  type ApiSchemaExpectation,
+  type ApiErrorResponse,
+} from '@core-playwright/core';
+
+const test = createApiTest();
+
+type HealthResponse = {
+  status: string;
+  version: string;
+};
+
+test('health check', async ({ api }) => {
+  const response = await api.get('/health');
+  const schema: ApiSchemaExpectation<HealthResponse> = {
+    requiredKeys: ['status', 'version'],
+  };
+  const body = await api.extractAndVerify<HealthResponse>(response, {
+    status: 200,
+    schema,
+  });
+
+  expect(body.status).toBe('ok');
+});
+
+test('invalid request', async ({ api }) => {
+  const response = await api.get('/users/unknown');
+
+  const error: ApiErrorResponse = await api.expectError(response, {
+    status: 404,
+    code: 'USER_NOT_FOUND',
+    message: 'User not found',
+  });
+
+  expect(error.code).toBe('USER_NOT_FOUND');
+});
+```
+
 ## Add a new subproject
 
 1. Create a new folder under `projects/<your-project>`

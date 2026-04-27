@@ -1,3 +1,4 @@
+export * from './api/index.js';
 export * from './config/createPlaywrightConfig.js';
 export * from './elements/index.js';
 export * from './pages/BasePage.js';
