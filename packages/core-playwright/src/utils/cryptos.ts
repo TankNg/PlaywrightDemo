@@ -3,10 +3,16 @@ import crypto from 'node:crypto';
 const IV_LENGTH = 12;
 const KEY_LENGTH = 32;
 
+/**
+ * Builds a fixed-length key from a secret string.
+ */
 function buildKey(secret: string): Buffer {
   return crypto.createHash('sha256').update(secret, 'utf8').digest();
 }
 
+/**
+ * Reads encryption key from environment.
+ */
 export function getEncryptionKeyFromEnv(): string {
   const key = process.env.SECRET_KEY;
 
@@ -16,6 +22,10 @@ export function getEncryptionKeyFromEnv(): string {
 
   return key;
 }
+
+/**
+ * Generates a random secret key string.
+ */
 export function generateSecretKey(): string {
   return crypto.randomBytes(KEY_LENGTH).toString('base64url');
 }
@@ -23,6 +33,9 @@ export function generateSecretKey(): string {
 export function encryptValue(plainText: string, secretKey: string): string;
 export function encryptValue(plainText: string): string;
 
+/**
+ * Encrypts plain text using AES-256-GCM.
+ */
 export function encryptValue(plainText: string, secretKey?: string): string {
   const key = secretKey ?? getEncryptionKeyFromEnv();
 
@@ -45,6 +58,10 @@ export function encryptValue(plainText: string, secretKey?: string): string {
 
 export function decryptValue(plainText: string, secretKey: string): string;
 export function decryptValue(plainText: string): string;
+
+/**
+ * Decrypts AES-256-GCM encrypted text.
+ */
 export function decryptValue(encryptedValue: string, secretKey?: string): string {
   const parts = encryptedValue.split(':');
   const key = secretKey ?? getEncryptionKeyFromEnv();
@@ -70,6 +87,9 @@ export function decryptValue(encryptedValue: string, secretKey?: string): string
   return decrypted.toString('utf8');
 }
 
+/**
+ * Decrypts an encrypted value using key from environment.
+ */
 export function decryptValueFromEnv(encryptedValue: string): string {
   return decryptValue(encryptedValue, getEncryptionKeyFromEnv());
 }
