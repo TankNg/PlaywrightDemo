@@ -1,5 +1,7 @@
 export * from './api/index.js';
+export * from './config/credentialStore.js';
 export * from './config/createPlaywrightConfig.js';
+export * from './config/environmentConfig.js';
 export * from './elements/index.js';
 export * from './pages/BasePage.js';
 export * from './utils/cryptos.js';

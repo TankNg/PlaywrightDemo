@@ -1,7 +1,11 @@
-import { createPlaywrightConfig, resolveFromModule } from '@core-playwright/core';
+import { createPlaywrightConfig, loadEnvironmentConfigFromJson } from '@core-playwright/core';
+
+loadEnvironmentConfigFromJson({
+  metaUrl: import.meta.url,
+  configRelativePath: './data/environment.json',
+});
 
 export default createPlaywrightConfig({
-  envDir: resolveFromModule(import.meta.url, '.'),
   testDir: './tests',
-  baseURL: 'https://opensource-demo.orangehrmlive.com',
+  baseURL: process.env.LOGIN_URL ?? process.env.BASE_URL,
 });

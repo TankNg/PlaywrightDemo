@@ -1,12 +1,9 @@
-import path from 'node:path';
 import { defineConfig, devices, type PlaywrightTestConfig } from '@playwright/test';
-import dotenv from 'dotenv';
 import { getLogger } from '../utils/logger.js';
 
 export interface CorePlaywrightProjectOptions {
   testDir: string;
   baseURL?: string;
-  envDir?: string;
   fullyParallel?: boolean;
   retries?: number;
   workers?: number;
@@ -108,30 +105,11 @@ function resolveProject(
 }
 
 /**
- * Loads environment variables from an env file by TEST_ENV.
- */
-function loadProjectEnv(envDir: string | undefined): void {
-  const env = process.env.TEST_ENV || 'qat';
-  const envFile = `.env.${env}`;
-  const envPath = path.resolve(envDir ?? process.cwd(), envFile);
-  const result = dotenv.config({ path: envPath });
-
-  if (result.error) {
-    logger.warn(`Env file not found: ${envPath}`);
-    return;
-  }
-
-  logger.info(`Running with env: ${env} (${envPath})`);
-}
-
-/**
  * Creates a shared Playwright configuration for framework projects.
  */
 export function createPlaywrightConfig(
   options: CorePlaywrightProjectOptions,
 ): PlaywrightTestConfig {
-  loadProjectEnv(options.envDir);
-
   const runInParallel = parseBoolean(process.env.PW_PARALLEL, false);
   const runMode = resolveRunMode(process.env.PW_RUN_MODE);
   const browsers = resolveBrowsers(process.env.PW_BROWSERS);

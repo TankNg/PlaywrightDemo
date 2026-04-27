@@ -58,11 +58,9 @@ npm run test:all
 
 ## Test execution config
 
-- each Playwright project loads its own env file
-- set `envDir` in that project's `playwright.config.ts`
-- the framework reads `TEST_ENV` and loads `.env.<value>` from that project directory
-- if `TEST_ENV` is not set, the default is `qat`
-- example files for a project are `projects/orangehrm-e2e/.env.qat`, `.env.stg`, and `.env.prod`
+- each Playwright project should load environment configuration from JSON files
+- use loadEnvironmentConfigFromJson(...) in project-level configs to load a JSON file such as `projects/<project>/data/environment.json`
+- the framework reads the TEST_ENV environment variable to select the environment when loading JSON; if TEST_ENV is not set, the default is `qat`
 - `PW_PARALLEL=false` runs with a single worker by default; set `true` to allow parallel execution
 - `PW_RUN_MODE=headless` is the default; set `headed` to open the browser UI
 - `PW_BROWSERS=chromium` is the default; provide a comma-separated list such as `chromium,firefox`
@@ -80,27 +78,62 @@ TEST_ENV=prod PW_BROWSERS=chromium,firefox npm run test:orangehrm
 Project config example:
 
 ```ts
-import { createPlaywrightConfig, resolveFromModule } from '@core-playwright/core';
+import { createPlaywrightConfig, loadEnvironmentConfigFromJson } from '@core-playwright/core';
+
+loadEnvironmentConfigFromJson({
+  metaUrl: import.meta.url,
+  configRelativePath: './data/environment.json',
+});
 
 export default createPlaywrightConfig({
-  envDir: resolveFromModule(import.meta.url, '.'),
   testDir: './tests',
-  baseURL: 'https://opensource-demo.orangehrmlive.com',
+  baseURL: process.env.LOGIN_URL ?? process.env.BASE_URL,
 });
 ```
 
-Project env example:
+Environment JSON example:
 
-```bash
-PW_PARALLEL=false
-PW_RUN_MODE=headless
-PW_BROWSERS=chromium
-PW_GROUPS=smoke
+```json
+{
+  "run": {
+    "PW_PARALLEL": false,
+    "PW_RUN_MODE": "headless",
+    "PW_BROWSERS": "chromium",
+    "PW_GROUPS": "smoke"
+  },
+  "environments": {
+    "qat": {
+      "BASE_URL": "https://opensource-demo.orangehrmlive.com",
+      "LOGIN_URL": "https://opensource-demo.orangehrmlive.com",
+      "DASHBOARD_URL": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
+      "API_BASE_URL": "https://opensource-demo.orangehrmlive.com"
+    }
+  }
+}
 ```
+
+Credentials JSON example (per-environment files):
+
+Create files named `projects/<project>/data/credentials.{env}.json`. Example:
+
+```json
+[
+  {
+    "username": "Admin",
+    "encryptedPassword": "iv:authTag:cipherText",
+    "encryptedSecretKey": "iv:authTag:cipherText"
+  }
+]
+```
+
+Notes:
+- Keep real secrets out of git; use CI secrets or encrypted values.
+- `loadEnvironmentConfigFromJson(...)` loads the selected environment into `process.env` using `TEST_ENV`.
 
 ## Encrypted secrets
 
 - store test passwords in JSON as `encryptedPassword`
+- or store plain or encrypted credentials per-environment as `projects/<project>/data/credentials.{env}.json` and load them with `createCredentialStoreFromJson(...)` (useful for mapping usernames to passwords in tests)
 - the runtime key comes from the `SECRET_KEY` environment variable
 - keep the real key outside git and manage it separately from the Playwright runtime `.env` file, for example as a machine-level environment variable or CI secret
 - new encrypted values are stored as `iv:authTag:cipherText`

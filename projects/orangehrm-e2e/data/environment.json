@@ -1,0 +1,28 @@
+{
+  "run": {
+    "PW_PARALLEL": false,
+    "PW_RUN_MODE": "headless",
+    "PW_BROWSERS": "chromium",
+    "PW_GROUPS": "smoke"
+  },
+  "environments": {
+    "qat": {
+      "BASE_URL": "https://opensource-demo.orangehrmlive.com",
+      "LOGIN_URL": "https://opensource-demo.orangehrmlive.com",
+      "DASHBOARD_URL": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
+      "API_BASE_URL": "https://opensource-demo.orangehrmlive.com"
+    },
+    "stg": {
+      "BASE_URL": "https://opensource-demo.orangehrmlive.com",
+      "LOGIN_URL": "https://opensource-demo.orangehrmlive.com",
+      "DASHBOARD_URL": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
+      "API_BASE_URL": "https://opensource-demo.orangehrmlive.com"
+    },
+    "prod": {
+      "BASE_URL": "https://opensource-demo.orangehrmlive.com",
+      "LOGIN_URL": "https://opensource-demo.orangehrmlive.com",
+      "DASHBOARD_URL": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
+      "API_BASE_URL": "https://opensource-demo.orangehrmlive.com"
+    }
+  }
+}
