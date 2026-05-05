@@ -119,6 +119,7 @@ Create files named `projects/<project>/data/credentials.{env}.json`. Example:
 ```json
 [
   {
+    "id": "admin",
     "username": "Admin",
     "encryptedPassword": "iv:authTag:cipherText",
     "encryptedSecretKey": "iv:authTag:cipherText"
@@ -129,11 +130,12 @@ Create files named `projects/<project>/data/credentials.{env}.json`. Example:
 Notes:
 - Keep real secrets out of git; use CI secrets or encrypted values.
 - `loadEnvironmentConfigFromJson(...)` loads the selected environment into `process.env` using `TEST_ENV`.
+- each credential must define a unique `id` value in that file.
 
 ## Encrypted secrets
 
 - store test passwords in JSON as `encryptedPassword`
-- or store plain or encrypted credentials per-environment as `projects/<project>/data/credentials.{env}.json` and load them with `createCredentialStoreFromJson(...)` (useful for mapping usernames to passwords in tests)
+- or store plain or encrypted credentials per-environment as `projects/<project>/data/credentials.{env}.json` and load them with `getCredentials(metaUrl, id)` (useful for mapping test IDs to usernames/passwords in tests)
 - the runtime key comes from the `SECRET_KEY` environment variable
 - keep the real key outside git and manage it separately from the Playwright runtime `.env` file, for example as a machine-level environment variable or CI secret
 - new encrypted values are stored as `iv:authTag:cipherText`

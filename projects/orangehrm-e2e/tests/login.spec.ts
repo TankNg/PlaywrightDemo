@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
 import {
-  createCredentialStoreFromJson,
+  getCredentials,
   formatTaggedTestName,
   loadJson,
   loadEnvironmentConfigFromJson,
   resolveFromModule,
+  Environment, getEnvironment,
 } from '@core-playwright/core';
 import { LoginPage } from '../src/pages/LoginPage.js';
 import type { LoginTestData } from '../src/types/login.types.js';
@@ -18,21 +19,16 @@ const loginDataPath = resolveFromModule(
   '../data/login-data.json',
 );
 const loginData = loadJson<LoginTestData[]>(loginDataPath);
-const credentialStore = createCredentialStoreFromJson({
-  metaUrl: import.meta.url,
-  filePattern: '../data/credentials.{env}.json',
-});
+const env: Environment = getEnvironment()
 
 test.describe('Login tests', () => {
   loginData.forEach((data) => {
     test(formatTaggedTestName(data.name, data.tags), async ({ page }) => {
       const loginPage = new LoginPage(page);
-      const username = data.username?.trim() ?? '';
-      let password = data.password;
-      if (password === undefined) {
-        password = credentialStore.get(username)?.getPassword() ?? '';
-      }
-      await loginPage.goto();
+      const credentials = getCredentials(import.meta.url, data.id);
+      const username = credentials.getUsername();
+      let password = credentials.getPassword();
+      await loginPage.goto(env.loginUrl);
       await loginPage.login(username, password);
 
       if (data.expected.type === 'error') {

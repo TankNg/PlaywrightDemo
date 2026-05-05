@@ -2,20 +2,18 @@ import { decryptValueFromEnv } from '../utils/cryptos.js';
 import { loadJson } from '../utils/dataLoader.js';
 import { resolveFromModule } from '../utils/path.js';
 
-export interface StoredCredentialRecord {
+interface EncryptedCredential {
+  id: string;
   username: string;
   encryptedPassword: string;
   encryptedSecretKey: string;
 }
 
 export interface Credential {
-  username: string;
+  id: string;
+  getUsername: () => string;
   getPassword: () => string;
   getSecretKey: () => string;
-}
-
-export interface CredentialStore {
-  get: (username: string) => Credential;
 }
 
 function decryptRequired(
@@ -23,66 +21,44 @@ function decryptRequired(
   username: string,
   field: string,
 ): string {
-  if (!value?.trim()) {
+  if (value === undefined) {
     throw new Error(`Credential "${username}" is missing encrypted ${field}.`);
   }
 
   return decryptValueFromEnv(value.trim());
 }
 
-export function createCredentialStore(
-  filePath: string
-): CredentialStore {
-  const records = loadJson<StoredCredentialRecord[]>(filePath);
-  const byUsername = new Map(
-    records.map((record) => [record.username.trim().toLowerCase(), record]),
+export function get(filePath: string, id: string): Credential {
+  let record = loadJson<EncryptedCredential[]>(filePath).find(
+    (r) => r.id === id,
   );
 
-  return {
-    get(username: string): Credential {
-      const record = byUsername.get(username.trim().toLowerCase());
-      if (!record) {
-        throw new Error(
-          `Credential "${username}" was not found in ${filePath}.`,
-        );
-      }
+  if (!record) {
+    throw new Error(`Credential "${id}" was not found in ${filePath}.`);
+  }
 
-      return {
-        username: record.username,
-        getPassword: () =>
-          decryptRequired(
-            record.encryptedPassword,
-            record.username,
-            'password',
-          ),
-        getSecretKey: () =>
-          decryptRequired(
-            record.encryptedSecretKey,
-            record.username,
-            'secret key',
-          ),
-      };
-    },
+  return {
+    id: record.id,
+    getUsername: () => record.username,
+    getPassword: () =>
+      decryptRequired(record.encryptedPassword, record.username, 'password'),
+    getSecretKey: () =>
+      decryptRequired(record.encryptedSecretKey, record.username, 'secret key'),
   };
 }
 
-export interface CreateCredentialStoreFromJsonOptions {
-  metaUrl: string;
-  testEnv?: string;
-  filePattern?: string;
-}
+export function getCredentials(metaUrl: string, id: string, testEnv: string, filePattern: string,): Credential;
+export function getCredentials(metaUrl: string, id: string): Credential;
 
-export function createCredentialStoreFromJson(
-  options: CreateCredentialStoreFromJsonOptions,
-): CredentialStore {
-  const env =
-    (options.testEnv ?? process.env.TEST_ENV ?? 'qat').trim() || 'qat';
-  const filePattern =
-    options.filePattern ?? '../../data/credentials.{env}.json';
-  const filePath = resolveFromModule(
-    options.metaUrl,
-    filePattern.replaceAll('{env}', env),
-  );
+export function getCredentials(
+  metaUrl: string,
+  id: string,
+  testEnv?: string,
+  filePattern?: string,
+): Credential {
+  const env = (testEnv ?? process.env.TEST_ENV ?? 'qat').trim() || 'qat';
+  let pattern = filePattern ?? '../data/credentials.{env}.json';
+  let filePath = resolveFromModule(metaUrl, pattern.replaceAll('{env}', env));
 
-  return createCredentialStore(filePath);
+  return get(filePath, id);
 }

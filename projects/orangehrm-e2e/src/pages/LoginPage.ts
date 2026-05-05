@@ -19,9 +19,9 @@ export class LoginPage extends BasePage {
     );
   }
 
-  async goto(): Promise<void> {
+  async goto(url: string): Promise<void> {
     logger.info('Opening login page');
-    await this.navigate('/');
+    await this.navigate(url);
   }
 
   async login(user: string, pass: string): Promise<void> {

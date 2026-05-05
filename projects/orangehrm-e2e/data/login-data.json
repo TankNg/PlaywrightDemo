@@ -2,8 +2,7 @@
   {
     "name": "Empty username & password",
     "tags": ["regression"],
-    "username": "",
-    "password": "",
+    "id": "emptyBoth",
     "expected": {
       "type": "error",
       "messages": ["Required", "Required"]
@@ -12,8 +11,7 @@
   {
     "name": "Empty username",
     "tags": ["regression"],
-    "username": "",
-    "password": "FwKLGoPrHgupbGVO:oK7JM7WUW3myHYwzWl6d2g:VkUlki6yhIs",
+    "id": "emptyUser",
     "expected": {
       "type": "error",
       "messages": ["Required"]
@@ -22,8 +20,7 @@
   {
     "name": "Empty password",
     "tags": ["regression"],
-    "username": "Admin",
-    "password": "",
+    "id": "emptyPassword",
     "expected": {
       "type": "error",
       "messages": ["Required"]
@@ -32,7 +29,7 @@
   {
     "name": "Invalid credentials",
     "tags": ["regression"],
-    "username": "wrong",
+    "id": "wrong-user",
     "expected": {
       "type": "error",
       "messages": ["Invalid credentials"]
@@ -41,7 +38,7 @@
   {
     "name": "Valid login",
     "tags": ["smoke"],
-    "username": "Admin",
+    "id": "admin",
     "expected": {
       "type": "success",
       "urlContains": "dashboard"

@@ -63,6 +63,10 @@ export function decryptValue(plainText: string): string;
  * Decrypts AES-256-GCM encrypted text.
  */
 export function decryptValue(encryptedValue: string, secretKey?: string): string {
+  if (encryptedValue.length < 40) {
+    return encryptedValue;
+  }
+
   const parts = encryptedValue.split(':');
   const key = secretKey ?? getEncryptionKeyFromEnv();
   const [iv, authTag, encrypted] =

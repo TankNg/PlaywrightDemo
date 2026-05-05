@@ -1,9 +1,5 @@
 import { loadJson } from '../utils/dataLoader.js';
 import { resolveFromModule } from '../utils/path.js';
-import {
-  createCredentialStoreFromJson,
-  CredentialStore,
-} from './credentialStore.js';
 
 export type EnvValue = string | number | boolean;
 
@@ -35,7 +31,8 @@ export interface LoadEnvironmentConfigOptions {
 export function loadEnvironmentConfigFromJson(
   options: LoadEnvironmentConfigOptions,
 ): string {
-  const env = (options.testEnv ?? process.env.TEST_ENV ?? 'qat').trim() || 'qat';
+  const env =
+    (options.testEnv ?? process.env.TEST_ENV ?? 'qat').trim() || 'qat';
   const filePath = resolveFromModule(
     options.metaUrl,
     options.configRelativePath ?? '../../data/environment.json',
@@ -54,43 +51,36 @@ export function loadEnvironmentConfigFromJson(
   return env;
 }
 
-export interface ProjectConfig {
-  urls: {
-    baseUrl: string;
-    loginUrl: string;
-    dashboardUrl?: string;
-    apiBaseUrl?: string;
-  };
-  credentialStore: CredentialStore;
+export interface Environment {
+  baseUrl: string;
+  loginUrl: string;
+  dashboardUrl?: string;
+  apiBaseUrl?: string;
 }
 
-const DEFAULT_BASE_URL = 'https://opensource-demo.orangehrmlive.com';
-
-function normalizeUrl(value: string | undefined): string | undefined {
-  if (!value) {
-    return undefined;
+function normalizeRequiredUrl(value: string | undefined, key: string): string {
+  if (!value?.trim()) {
+    throw new Error(`Missing required environment url "${key}".`);
   }
 
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
+  return value.trim();
 }
 
+function normalizeOptionalUrl(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
 
-export function createProjectConfig(metaUrl: string): ProjectConfig {
-  const baseUrl = normalizeUrl(process.env.BASE_URL) ?? DEFAULT_BASE_URL;
-  const loginUrl = normalizeUrl(process.env.LOGIN_URL) ?? baseUrl;
-  const dashboardUrl = normalizeUrl(process.env.DASHBOARD_URL);
-  const apiBaseUrl = normalizeUrl(process.env.API_BASE_URL);
-  const credentialStore = createCredentialStoreFromJson({ metaUrl });
+export function getEnvironment(): Environment {
+  const baseUrl = normalizeRequiredUrl(process.env.BASE_URL, 'BASE_URL');
+  const loginUrl = normalizeRequiredUrl(process.env.LOGIN_URL, 'LOGIN_URL');
+  const dashboardUrl = normalizeOptionalUrl(process.env.DASHBOARD_URL);
+  const apiBaseUrl = normalizeOptionalUrl(process.env.API_BASE_URL);
 
   return {
-    urls: {
-      baseUrl,
-      loginUrl,
-      dashboardUrl,
-      apiBaseUrl,
-    },
-    credentialStore,
+    baseUrl,
+    loginUrl,
+    dashboardUrl,
+    apiBaseUrl,
   };
 }
-
