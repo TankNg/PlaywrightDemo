@@ -263,89 +263,83 @@ In practice:
 
 ### How this is used in code
 
-Environment objects and credential objects are resolved separately with `getBeanById(...)`.
+The recommended pattern is to create a project-level base test and let it preload the bean context once per worker.
 
-Example:
+The framework now provides `createBaseTest(...)` for that.
+
+Example project base test:
 
 ```ts
-import { Credential, Environment, getBeanById } from '@core-playwright/core';
+import { createBaseTest, expect } from '@core-playwright/core';
 
-const environment = getBeanById<Environment>(
-  import.meta.url,
-  {
-    xmlPath: 'config/Setting.xml',
-    propertiesPaths: ['config/Environment.properties'],
+export const test = createBaseTest({
+  metaUrl: import.meta.url,
+  xmlPath: 'config/Setting.xml',
+  propertiesPaths: [
+    'config/Environment.properties',
+    'config/QATCredential.properties',
+  ],
+  defaultEnv: 'qat',
+  debug: {
+    env: 'qat',
+    credTarget: 'QAT1',
   },
-  process.env.env ?? 'qat',
-);
+});
 
-const credential = getBeanById<Credential>(
-  import.meta.url,
-  {
-    xmlPath: 'config/Setting.xml',
-    propertiesPaths: [
-      'config/Environment.properties',
-      'config/QATCredential.properties',
-    ],
-  },
-  'qatUser1',
-);
+export { expect };
 ```
 
-If you run with:
+Then use that base test in specs:
+
+```ts
+import { expect, test } from './baseTest.js';
+
+test('example', async ({ beanContext, environment, getCredential }) => {
+  const credential = getCredential('qatUser1');
+
+  expect(beanContext.env).toBe('qat');
+  expect(environment.loginUrl).toContain('orangehrmlive.com');
+  expect(credential.username).toBeTruthy();
+});
+```
+
+Available fixtures from the base test:
+
+- `beanContext`: full preloaded bean context
+- `environment`: selected environment bean
+- `getCredential(id)`: helper to resolve a credential bean by id
+
+### Base test precedence
+
+The base test resolves runtime selection in this order:
+
+1. values passed from `cross-env`
+2. debug defaults configured in the project `baseTest.ts`
+3. `defaultEnv` for the environment bean id
+
+That means `cross-env` always wins, and the local debug config is only a fallback.
+
+### Preload beans through the base test
+
+If you want Selenium-style shared setup, use the project base test instead of repeating `beforeAll(...)` in every spec.
+
+Run with explicit runtime selection:
 
 ```bash
 npx cross-env env=qat target.cred=QAT1 npm run test:orangehrm
 ```
 
-then:
-
-- `target.cred=QAT1` makes the XML import `QAT1Credential.xml`
-- `env=qat` can be used by your code to request the `qat` environment bean
-- the credential bean id remains whatever test code requests, such as `qatUser1`
-
-### Preload beans once per suite
-
-If you want a Selenium-style suite context, preload the beans in `beforeAll` and reuse them in every test in that file.
-
-Example:
-
-```ts
-import { type BeanContext, loadBeanContext } from '@core-playwright/core';
-import { test } from '@playwright/test';
-
-let beanContext: BeanContext;
-
-test.beforeAll(() => {
-  beanContext = loadBeanContext(import.meta.url, {
-    xmlPath: 'config/Setting.xml',
-    propertiesPaths: [
-      'config/Environment.properties',
-      'config/QATCredential.properties',
-    ],
-  });
-});
-
-test('example', async () => {
-  const environment = beanContext.getEnvironment();
-  const credential = beanContext.getCredential('qatUser1');
-
-  console.log(environment.loginUrl);
-  console.log(credential.username);
-});
-```
-
-Run it with:
+Or run locally with only the debug defaults from `baseTest.ts`:
 
 ```bash
-npx cross-env env=qat target.cred=QAT1 npm run test:orangehrm
+npm run test:orangehrm
 ```
 
-That will:
+With the current example:
 
-- select the `qat` environment bean
-- import credentials from `QAT1Credential.xml`
-- preload all supported beans once for the suite
+- `env=qat` selects the `qat` environment bean
+- `target.cred=QAT1` imports `QAT1Credential.xml`
+- if `cross-env` values are missing, the project `baseTest.ts` debug values are used
 
 ## Add a new project
 

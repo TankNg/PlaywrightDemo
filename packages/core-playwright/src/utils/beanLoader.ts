@@ -100,6 +100,12 @@ export interface BeanLoaderOptions {
    * Optional target/profile name.
    */
   target?: string;
+
+  /**
+   * Optional runtime variables used for XML import placeholder resolution and
+   * bean selection without mutating process.env.
+   */
+  variables?: Record<string, string | undefined>;
 }
 
 export interface BeanContextOptions extends BeanLoaderOptions {
@@ -116,6 +122,13 @@ export interface BeanContextOptions extends BeanLoaderOptions {
    * Defaults to "qat".
    */
   defaultEnv?: string;
+
+  /**
+   * Default credential.xml when the credTarget variable is not set.
+   *
+   * Defaults to "QAT".
+   */
+  credTarget?: string;
 }
 
 export interface BeanContext {
@@ -221,10 +234,10 @@ function resolveValue(
   return '';
 }
 
-/**
- * Recursively parses XML and resolves <import resource="Config.xml"/>.
- */
-function parseXmlWithImports(xmlPath: string): Document {
+function parseXmlWithImports(
+  xmlPath: string,
+  variables: Record<string, string | undefined>,
+): Document {
   const xml = fs.readFileSync(xmlPath, 'utf-8');
 
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
@@ -240,7 +253,7 @@ function parseXmlWithImports(xmlPath: string): Document {
 
     const importPath = path.resolve(
       path.dirname(xmlPath),
-      resolveResource(resource),
+      resolveResource(resource, variables),
     );
 
     if (!fs.existsSync(importPath)) {
@@ -249,7 +262,7 @@ function parseXmlWithImports(xmlPath: string): Document {
       continue;
     }
 
-    const importedDoc = parseXmlWithImports(importPath);
+    const importedDoc = parseXmlWithImports(importPath, variables);
 
     const importedBeans = xpath.select('//bean', importedDoc) as Element[];
 
@@ -340,11 +353,14 @@ const PLACEHOLDER_REGEX = /\{([^:}]+):([^}]+)}/g;
  * Missing TARGET
  * -> QATCredential.xml
  */
-function resolveResource(resource: string): string {
+function resolveResource(
+  resource: string,
+  variables: Record<string, string | undefined>,
+): string {
   return resource.replace(
     PLACEHOLDER_REGEX,
     (_, envKey: string, defaultVal: string) => {
-      return process.env[envKey] ?? defaultVal;
+      return variables[envKey] ?? defaultVal;
     },
   );
 }
@@ -385,7 +401,8 @@ export function getBeanById<T extends Environment | Credential>(
   options: BeanLoaderOptions,
   beanId: string,
 ): T {
-  const { xmlPath, propertiesPaths } = options;
+  const { xmlPath, propertiesPaths, variables } = options;
+  const runtimeVariables = { ...process.env, ...variables };
 
   const resolvedXmlPath = resolveFromModule(metaUrl, xmlPath);
 
@@ -396,7 +413,7 @@ export function getBeanById<T extends Environment | Credential>(
   // ---------------------------------------------------------------------------
   // Parse XML with recursive imports
   // ---------------------------------------------------------------------------
-  const doc = parseXmlWithImports(resolvedXmlPath);
+  const doc = parseXmlWithImports(resolvedXmlPath, runtimeVariables);
 
   // ---------------------------------------------------------------------------
   // Load properties
@@ -455,17 +472,18 @@ export function loadBeanContext(
   metaUrl: string,
   options: BeanContextOptions,
 ): BeanContext {
-  const { xmlPath, propertiesPaths } = options;
+  const { xmlPath, propertiesPaths, variables } = options;
+  const runtimeVariables = { ...process.env, ...variables };
   const envVarName = options.envVarName ?? 'env';
   const defaultEnv = options.defaultEnv ?? 'qat';
-  const selectedEnv = process.env[envVarName] ?? defaultEnv;
+  const selectedEnv = runtimeVariables[envVarName] ?? defaultEnv;
   const resolvedXmlPath = resolveFromModule(metaUrl, xmlPath);
 
   if (!fs.existsSync(resolvedXmlPath)) {
     throw new Error(`[BeanLoader] XML file not found: ${xmlPath}`);
   }
 
-  const doc = parseXmlWithImports(resolvedXmlPath);
+  const doc = parseXmlWithImports(resolvedXmlPath, runtimeVariables);
   const props = loadAllProperties(metaUrl, propertiesPaths);
   const beanNodes = xpath.select('//bean', doc) as Element[];
 
@@ -520,7 +538,7 @@ export function loadBeanContext(
     env: selectedEnv,
     variables: {
       [envVarName]: process.env[envVarName],
-      'target.cred': process.env['target.cred'],
+      'target.cred': runtimeVariables['target.cred'],
     },
     environments,
     credentials,
