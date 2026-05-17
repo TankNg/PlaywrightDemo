@@ -1,233 +1,490 @@
-# Playwright Workspace Design
+# Playwright Framework Workspace
 
-This repository is organized as a small monorepo so `CorePlaywright` can be reused by multiple Playwright projects the same way a shared Maven module is reused by multiple Java modules.
+This repository is a small Playwright monorepo built around a shared core package and a sample end-to-end project.
 
-## Structure
+It is intended for teams that want:
+
+- shared Playwright setup across multiple projects
+- reusable page and element abstractions
+- a place to keep common test utilities in one package
+- project-specific tests and page objects isolated from the shared framework
+
+## What is in this project
+
+The workspace currently contains two main parts:
 
 ```text
 packages/
-  core-playwright/        Shared pages, config helpers, utilities
+  core-playwright/        Shared Playwright framework package
 projects/
-  orangehrm-e2e/         Example consumer project
+  orangehrm-e2e/          Example consumer project for OrangeHRM
+scripts/                  Secret generation and encryption helpers
 ```
 
-## Project structure details
+### `packages/core-playwright`
 
-### Core package (`packages/core-playwright`)
+This package exposes the reusable framework pieces:
 
-- `src/api`: shared API fixture and `ApiClient` helpers for API assertions
-- `src/config`: reusable Playwright config builder for all projects
-- `src/elements`: common element wrappers (`Button`, `Textbox`, `Checkbox`, etc.)
-- `src/pages`: base page abstraction (`BasePage`) used by project page objects
-- `src/types`: shared framework type contracts for API, elements, and reusable helpers
-- `src/utils`: shared utilities (paths, test tags, crypto, logger, data loader)
-- `src/index.ts`: public exports used by consumer projects
+- `src/config`: shared Playwright config builder
+- `src/pages`: base page abstraction
+- `src/elements`: wrapper classes like `Textbox`, `Button`, `Checkbox`, `Label`
+- `src/api`: reusable API fixture and API client helpers
+- `src/utils`: shared helpers such as bean loading, property loading, paths, logger, crypto, and test tags
+- `src/index.ts`: public exports for consumer projects
 
-### Consumer project (`projects/orangehrm-e2e`)
+### `projects/orangehrm-e2e`
 
-- `src/pages`: project-specific Page Object Model classes (for example `LoginPage`)
-- `src/types`: project domain types used by pages, test payloads, fixtures, and data models
-- `src/utils`: project-only helper functions used by that project (mapping, formatters, builders, custom assertions, etc.)
-- `tests`: Playwright test specs (`*.spec.ts`) that use page objects and fixtures
-- `playwright.config.ts`: project-level config that calls `createPlaywrightConfig(...)`
+This is the example project that consumes `@core-playwright/core`:
 
-### Recommended flow (`src/pages` + `tests`)
+- `playwright.config.ts`: project-level Playwright config
+- `src/pages`: project-specific page objects such as `LoginPage`
+- `src/types`: project types
+- `tests`: Playwright test specs
+- `config`: XML and properties files used by the bean loader
+- `data`: test data JSON files
 
-1. Put selectors and UI actions in page classes under `src/pages`
-2. Keep test specs in `tests` focused on scenarios and assertions
-3. Reuse shared wrappers from `@core-playwright/core` instead of raw locator logic in tests
-4. Keep project type definitions close to usage in `src/types`
-5. Place helper code that is not reusable across projects in project-local `src/utils`
-6. If a utility becomes reusable across projects, move it into `packages/core-playwright/src/utils`
+## How the workspace is organized
 
-## How reuse works
+This repo uses npm workspaces:
 
-- `packages/core-playwright` is published internally as `@core-playwright/core`
-- each subproject declares `"@core-playwright/core": "file:../../packages/core-playwright"` in `package.json`
-- the `file:` dependency makes npm link the local core package into each project, similar to a Maven multi-module dependency
+- root `package.json` manages shared dependencies and workspace scripts
+- `packages/core-playwright` is linked into projects through a local `file:` dependency
+- each project can keep its own tests and config while reusing the core package
 
-## Commands
+That gives you a setup similar to a shared automation library consumed by multiple test suites.
+
+## Requirements
+
+- Node.js 18 or newer
+- npm 9 or newer
+
+Playwright browsers are also required. They can be installed with the Playwright CLI after dependencies are installed.
+
+## Install
+
+Clone the repository, then install dependencies from the root:
 
 ```bash
 npm install
-npm run build
-npm run typecheck
-npm run test:orangehrm
-npm run test:all
 ```
 
-## Test execution config
+This installs the packages used by the workspace, including:
 
-- each Playwright project should load environment configuration from JSON files
-- use loadEnvironmentConfigFromJson(...) in project-level configs to load a JSON file such as `projects/<project>/data/environment.json`
-- the framework reads the TEST_ENV environment variable to select the environment when loading JSON; if TEST_ENV is not set, the default is `qat`
-- `PW_PARALLEL=false` runs with a single worker by default; set `true` to allow parallel execution
-- `PW_RUN_MODE=headless` is the default; set `headed` to open the browser UI
-- `PW_BROWSERS=chromium` is the default; provide a comma-separated list such as `chromium,firefox`
-- `PW_GROUPS=` is optional; provide a comma-separated list such as `smoke` or `smoke,regression`
-- group membership is declared per test with tags, which are appended to the Playwright test title as `@smoke`, `@regression`, and so on
+- `@playwright/test`
+- `typescript`
+- `@types/node`
+- `cross-env`
+- `prettier`
+- `properties-reader`
+- `xmldom`
+- `xpath`
+- `log4js`
+
+Install Playwright browsers:
+
+```bash
+npx playwright install
+```
+
+If this is a fresh machine, these are the minimum setup commands:
+
+```bash
+npm install
+npx playwright install
+```
+
+## Setup
+
+### 1. Build or type-check the workspace
+
+```bash
+npm run build
+```
+
+or
+
+```bash
+npm run typecheck
+```
+
+### 2. Review the example project configuration
+
+The sample project uses XML and `.properties` configuration files under:
+
+```text
+projects/orangehrm-e2e/config/
+```
+
+Current files include:
+
+- `Environment.properties`
+- `QATCredential.properties`
+- `Setting.xml`
+- `QATCredential.xml`
+
+The example test reads beans from these files through `getBeanById(...)`.
+
+### 3. Optional runtime environment variables
+
+The shared config builder reads these variables at runtime:
+
+- `PW_PARALLEL=true|false`
+- `PW_RUN_MODE=headless|headed`
+- `PW_BROWSERS=chromium,firefox,webkit`
+- `PW_GROUPS=smoke,regression`
+- `CI=true`
+
+Defaults:
+
+- runs with `chromium`
+- runs `headless`
+- uses `1` worker unless `PW_PARALLEL=true`
 
 Example:
 
 ```bash
-TEST_ENV=qat npm run test:orangehrm
-TEST_ENV=stg npm run test:orangehrm
-TEST_ENV=prod PW_BROWSERS=chromium,firefox npm run test:orangehrm
+PW_RUN_MODE=headed PW_BROWSERS=chromium npm run test:orangehrm
 ```
 
-Project config example:
+## How to use
+
+### Run the sample project
+
+From the repository root:
+
+```bash
+npm run test:orangehrm
+```
+
+Run all workspace tests:
+
+```bash
+npm run test:all
+```
+
+Run the sample project in headed mode:
+
+```bash
+npm run test:orangehrm:headed
+```
+
+### Write tests in the example project
+
+Tests live here:
+
+```text
+projects/orangehrm-e2e/tests/
+```
+
+The current example test:
+
+- loads a bean using `getBeanById(...)`
+- resolves values from XML and `.properties`
+- prints the resolved username
+
+### Create page objects
+
+Project page objects should live under:
+
+```text
+projects/orangehrm-e2e/src/pages/
+```
+
+The existing `LoginPage` shows the intended pattern:
+
+- extend `BasePage`
+- build controls with shared wrappers like `textbox(...)` and `button(...)`
+- keep selector logic and UI actions inside the page object
+
+### Reuse the shared framework
+
+Import shared utilities from:
 
 ```ts
-import { createPlaywrightConfig, loadEnvironmentConfigFromJson } from '@core-playwright/core';
+import { BasePage, Button, Textbox, createPlaywrightConfig } from '@core-playwright/core';
+```
 
-loadEnvironmentConfigFromJson({
-  metaUrl: import.meta.url,
-  configRelativePath: './data/environment.json',
+Useful shared capabilities already present in the core package:
+
+- Playwright config creation with browser and mode selection from environment variables
+- page object base class
+- element wrappers for common controls
+- API test fixture with `createApiTest()`
+- XML and `.properties` bean loading
+- encryption helpers for secrets
+
+### Use `cross-env` to switch environment or credential files
+
+This workspace already includes `cross-env` as a dependency.
+
+Use it when you need to set environment variables in a way that works on macOS, Linux, and Windows.
+
+This is especially useful here because the XML import in `projects/orangehrm-e2e/config/Setting.xml` uses:
+
+```xml
+<import resource="{target.cred:QAT}Credential.xml" />
+```
+
+That means:
+
+- if `target.cred` is not set, the loader imports `QATCredential.xml`
+- if `target.cred=QAT1`, the loader imports `QAT1Credential.xml`
+
+Example:
+
+```bash
+npx cross-env target.cred=QAT1 npm run test:orangehrm
+```
+
+Use this when you want to switch the credential XML source without changing the code.
+
+### `env=qat` and `target.cred=QAT1`
+
+These two values control different things:
+
+- `env=qat`: a value you can use in your own test/config code to choose the environment bean id
+- `target.cred=QAT1`: chooses which credential XML file gets imported automatically
+
+With the current XML:
+
+- `env=qat` maps to the bean `<bean id="qat" class="Environment">`
+- `target.cred=QAT1` maps to `QAT1Credential.xml`
+
+Example command:
+
+```bash
+npx cross-env env=qat target.cred=QAT1 npm run test:orangehrm
+```
+
+In practice:
+
+- environment bean id to request: `qat`
+- credential import file: `QAT1Credential.xml`
+
+### How this is used in code
+
+Environment objects and credential objects are resolved separately with `getBeanById(...)`.
+
+Example:
+
+```ts
+import { Credential, Environment, getBeanById } from '@core-playwright/core';
+
+const environment = getBeanById<Environment>(
+  import.meta.url,
+  {
+    xmlPath: 'config/Setting.xml',
+    propertiesPaths: ['config/Environment.properties'],
+  },
+  process.env.env ?? 'qat',
+);
+
+const credential = getBeanById<Credential>(
+  import.meta.url,
+  {
+    xmlPath: 'config/Setting.xml',
+    propertiesPaths: [
+      'config/Environment.properties',
+      'config/QATCredential.properties',
+    ],
+  },
+  'qatUser1',
+);
+```
+
+If you run with:
+
+```bash
+npx cross-env env=qat target.cred=QAT1 npm run test:orangehrm
+```
+
+then:
+
+- `target.cred=QAT1` makes the XML import `QAT1Credential.xml`
+- `env=qat` can be used by your code to request the `qat` environment bean
+- the credential bean id remains whatever test code requests, such as `qatUser1`
+
+### Preload beans once per suite
+
+If you want a Selenium-style suite context, preload the beans in `beforeAll` and reuse them in every test in that file.
+
+Example:
+
+```ts
+import { type BeanContext, loadBeanContext } from '@core-playwright/core';
+import { test } from '@playwright/test';
+
+let beanContext: BeanContext;
+
+test.beforeAll(() => {
+  beanContext = loadBeanContext(import.meta.url, {
+    xmlPath: 'config/Setting.xml',
+    propertiesPaths: [
+      'config/Environment.properties',
+      'config/QATCredential.properties',
+    ],
+  });
 });
 
-export default createPlaywrightConfig({
-  testDir: './tests',
-  baseURL: process.env.LOGIN_URL ?? process.env.BASE_URL,
+test('example', async () => {
+  const environment = beanContext.getEnvironment();
+  const credential = beanContext.getCredential('qatUser1');
+
+  console.log(environment.loginUrl);
+  console.log(credential.username);
 });
 ```
 
-Environment JSON example:
+Run it with:
+
+```bash
+npx cross-env env=qat target.cred=QAT1 npm run test:orangehrm
+```
+
+That will:
+
+- select the `qat` environment bean
+- import credentials from `QAT1Credential.xml`
+- preload all supported beans once for the suite
+
+## Add a new project
+
+To add another Playwright project that reuses the shared core package:
+
+### 1. Create a new project folder
+
+Create a folder under:
+
+```text
+projects/<your-project>/
+```
+
+Suggested structure:
+
+```text
+projects/<your-project>/
+  package.json
+  playwright.config.ts
+  tsconfig.json
+  src/pages/
+  src/types/
+  tests/
+  config/
+  data/
+```
+
+### 2. Add a project `package.json`
+
+Example:
 
 ```json
 {
-  "run": {
-    "PW_PARALLEL": false,
-    "PW_RUN_MODE": "headless",
-    "PW_BROWSERS": "chromium",
-    "PW_GROUPS": "smoke"
+  "name": "@projects/your-project",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@core-playwright/core": "file:../../packages/core-playwright"
   },
-  "environments": {
-    "qat": {
-      "BASE_URL": "https://opensource-demo.orangehrmlive.com",
-      "LOGIN_URL": "https://opensource-demo.orangehrmlive.com",
-      "DASHBOARD_URL": "https://opensource-demo.orangehrmlive.com/web/index.php/dashboard/index",
-      "API_BASE_URL": "https://opensource-demo.orangehrmlive.com"
-    }
+  "scripts": {
+    "test": "playwright test -c playwright.config.ts",
+    "typecheck": "tsc -b --pretty false"
   }
 }
 ```
 
-Credentials JSON example (per-environment files):
+### 3. Add a project TypeScript config
 
-Create files named `projects/<project>/data/credentials.{env}.json`. Example:
+Create `projects/<your-project>/tsconfig.json` and extend the workspace base config using the same pattern as the existing project.
+
+### 4. Add the project to `tsconfig.workspace.json`
+
+Add a new reference entry so workspace build and type-check include the project.
+
+Example:
 
 ```json
-[
-  {
-    "id": "admin",
-    "username": "Admin",
-    "encryptedPassword": "iv:authTag:cipherText",
-    "encryptedSecretKey": "iv:authTag:cipherText"
-  }
-]
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core-playwright" },
+    { "path": "./projects/orangehrm-e2e" },
+    { "path": "./projects/your-project" }
+  ]
+}
 ```
 
-Notes:
-- Keep real secrets out of git; use CI secrets or encrypted values.
-- `loadEnvironmentConfigFromJson(...)` loads the selected environment into `process.env` using `TEST_ENV`.
-- each credential must define a unique `id` value in that file.
+### 5. Add a Playwright config
 
-## Encrypted secrets
+Create `projects/<your-project>/playwright.config.ts` and use the shared config builder:
 
-- store test passwords in JSON as `encryptedPassword`
-- or store plain or encrypted credentials per-environment as `projects/<project>/data/credentials.{env}.json` and load them with `getCredentials(metaUrl, id)` (useful for mapping test IDs to usernames/passwords in tests)
-- the runtime key comes from the `SECRET_KEY` environment variable
-- keep the real key outside git and manage it separately from the Playwright runtime `.env` file, for example as a machine-level environment variable or CI secret
-- new encrypted values are stored as `iv:authTag:cipherText`
-- the framework still accepts older `enc:v1:...` values during migration
-- generate a brand new key:
+```ts
+import { createPlaywrightConfig } from '@core-playwright/core';
+
+export default createPlaywrightConfig({
+  testDir: './tests',
+  baseURL: '',
+});
+```
+
+### 6. Add page objects and tests
+
+- put page objects in `src/pages`
+- put test specs in `tests`
+- import shared classes from `@core-playwright/core`
+
+### 7. Run the new project
+
+From the repo root, run it with Playwright config path directly:
 
 ```bash
+npx playwright test -c projects/<your-project>/playwright.config.ts
+```
+
+If you want a root shortcut, add a new script in the root `package.json`.
+
+## Available scripts
+
+Root scripts:
+
+```bash
+npm run build
+npm run typecheck
+npm run test:orangehrm
+npm run test:orangehrm:headed
+npm run test:all
 npm run generate:key
+npm run encrypt:secret -- "your-plain-text"
+npm run decrypt:secret -- "your-encrypted-value"
 ```
 
-- example output:
+## Secret handling
+
+The repo includes helper scripts for secret management:
+
+- `npm run generate:key`
+- `npm run encrypt:secret -- "value"`
+- `npm run decrypt:secret -- "value"`
+
+These scripts expect `SECRET_KEY` to be available in the environment for encryption and decryption.
+
+Example:
 
 ```bash
-SECRET_KEY=your-generated-key
-```
-
-- encrypt plaintext with the key from `process.env.SECRET_KEY`:
-
-```bash
+export SECRET_KEY=your-generated-key
 npm run encrypt:secret -- "admin123"
 ```
 
-- decrypt an encrypted value with the key from `process.env.SECRET_KEY`:
+## Example workflow
 
-```bash
-npm run decrypt:secret -- "iv:authTag:cipherText"
-```
+1. Install dependencies with `npm install`
+2. Install Playwright browsers with `npx playwright install`
+3. Review or update files in `projects/orangehrm-e2e/config`
+4. Run `npm run build` or `npm run typecheck`
+5. Execute `npm run test:orangehrm`
 
-- set `SECRET_KEY=...` in the machine environment before running encrypt or decrypt commands
-- if `SECRET_KEY` is missing, the encrypt and decrypt scripts exit immediately with an error
-- copy the encrypted output into your JSON data as `encryptedPassword`
-- after generating new encrypted values, replace the committed sample values in your JSON data
+## Notes
 
-## API test support
-
-- `@core-playwright/core` now includes a reusable `ApiClient`
-- use `createApiTest()` to get an `api` fixture backed by Playwright's request context
-- set `API_BASE_URL` in the project env file when API and UI targets differ
-- if `API_BASE_URL` is missing, the API fixture falls back to `BASE_URL`
-
-Example:
-
-```ts
-import { expect } from '@playwright/test';
-import {
-  createApiTest,
-  type ApiSchemaExpectation,
-  type ApiErrorResponse,
-} from '@core-playwright/core';
-
-const test = createApiTest();
-
-type HealthResponse = {
-  status: string;
-  version: string;
-};
-
-test('health check', async ({ api }) => {
-  const response = await api.get('/health');
-  const schema: ApiSchemaExpectation<HealthResponse> = {
-    requiredKeys: ['status', 'version'],
-  };
-  const body = await api.extractAndVerify<HealthResponse>(response, {
-    status: 200,
-    schema,
-  });
-
-  expect(body.status).toBe('ok');
-});
-
-test('invalid request', async ({ api }) => {
-  const response = await api.get('/users/unknown');
-
-  const error: ApiErrorResponse = await api.expectError(response, {
-    status: 404,
-    code: 'USER_NOT_FOUND',
-    message: 'User not found',
-  });
-
-  expect(error.code).toBe('USER_NOT_FOUND');
-});
-```
-
-## Add a new subproject
-
-1. Create a new folder under `projects/<your-project>`
-2. Add a `package.json` with `"@core-playwright/core": "file:../../packages/core-playwright"`
-3. Add `playwright.config.ts` and call `createPlaywrightConfig(...)`
-4. Import shared utilities/pages from `@core-playwright/core`
-
-Example:
-
-```ts
-import { createPlaywrightConfig, BasePage, loadJson } from '@core-playwright/core';
-```
+- The repository currently includes built output under `dist/` in workspace packages and projects.
+- The sample project is still centered on XML and `.properties` configuration rather than JSON-based environment loading.
+- `@core-playwright/core` is designed to be reused by additional projects under `projects/`.

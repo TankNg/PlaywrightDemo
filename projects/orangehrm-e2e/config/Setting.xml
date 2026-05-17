@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans>
+    <!-- Import credential beans -->
+    <import resource="{target.cred:QAT}Credential.xml" />
+
+    <!-- QAT Environment -->
+    <bean id="qat" class="Environment">
+        <property name="loginUrl" value="${QAT.Environment.LoginUrl}" />
+        <property name="dashboardUrl" value="${QAT.Environment.DashboardUrl}" />
+        <property name="webserviceUrl" value="${QAT.Environment.WebserviceUrl}" />
+    </bean>
+
+    <!-- STG Environment -->
+    <bean id="stg" class="Environment">
+        <property name="loginUrl" value="${STG.Environment.LoginUrl}" />
+        <property name="dashboardUrl" value="${STG.Environment.DashboardUrl}" />
+        <property name="webserviceUrl" value="${STG.Environment.WebserviceUrl}" />
+    </bean>
+
+</beans>
