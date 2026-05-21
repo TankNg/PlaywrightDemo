@@ -11,8 +11,8 @@
     "build": "tsc -b tsconfig.workspace.json",
     "decrypt:secret": "node scripts/decrypt-secret.mjs",
     "generate:key": "node scripts/generate-secret-key.mjs",
-    "test:orangehrm": "playwright test -c projects/orangehrm-e2e/playwright.config.ts",
-    "test:orangehrm:headed": "playwright test -c projects/orangehrm-e2e/playwright.config.ts --headed",
+    "test:orangehrm": "playwright test -c playwright.config.ts",
+    "test:orangehrm:headed": "playwright test -c playwright.config.ts --headed",
     "test:all": "npm run test --workspaces --if-present",
     "encrypt:secret": "node scripts/encrypt-secret.mjs",
     "typecheck": "tsc -b tsconfig.workspace.json"

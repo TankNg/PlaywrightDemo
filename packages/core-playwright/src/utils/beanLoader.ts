@@ -27,7 +27,6 @@
  */
 
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 
 import * as xpath from 'xpath';
 
@@ -35,6 +34,7 @@ import { DOMParser } from 'xmldom';
 
 import { resolveFromModule } from './path.js';
 import { loadProperties } from './propertiesLoader.js';
+import { decryptValueFromEnv } from './cryptos.js';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -70,7 +70,7 @@ export class Credential {
      */
     readonly username: string,
     /**
-     * Password
+     * password
      */
     readonly password: string,
     /**
@@ -87,7 +87,7 @@ export interface BeanLoaderOptions {
   /**
    * XML metadata file path.
    */
-  xmlPath: string;
+  xmlPaths: string[];
 
   /**
    * List of .properties files.
@@ -97,58 +97,26 @@ export interface BeanLoaderOptions {
   propertiesPaths: string[];
 
   /**
-   * Optional target/profile name.
-   */
-  target?: string;
-
-  /**
-   * Optional runtime variables used for XML import placeholder resolution and
-   * bean selection without mutating process.env.
-   */
-  variables?: Record<string, string | undefined>;
-}
-
-export interface BeanContextOptions extends BeanLoaderOptions {
-  /**
-   * Environment variable that selects the environment bean id.
+   * Environment variable that selects the environment bean name.
    *
    * Defaults to "env".
    */
-  envVarName?: string;
-
-  /**
-   * Default environment bean id when the environment variable is not set.
-   *
-   * Defaults to "qat".
-   */
-  defaultEnv?: string;
-
-  /**
-   * Default credential.xml when the credTarget variable is not set.
-   *
-   * Defaults to "QAT".
-   */
-  credTarget?: string;
+  env?: string;
 }
 
 export interface BeanContext {
   /**
-   * Selected environment bean id.
+   * Selected environment bean name.
    */
   readonly env: string;
 
   /**
-   * Snapshot of all process environment variables used by the bean context.
-   */
-  readonly variables: Readonly<Record<string, string | undefined>>;
-
-  /**
-   * All resolved environment beans keyed by id.
+   * All resolved environment beans keyed by name.
    */
   readonly environments: Readonly<Record<string, Environment>>;
 
   /**
-   * All resolved credential beans keyed by id.
+   * All resolved credential beans keyed by name.
    */
   readonly credentials: Readonly<Record<string, Credential>>;
 
@@ -158,9 +126,9 @@ export interface BeanContext {
   getEnvironment(): Environment;
 
   /**
-   * Returns a credential bean by id.
+   * Returns a credential bean by name.
    */
-  getCredential(id: string): Credential;
+  getCredential(name: string): Credential;
 }
 
 // -----------------------------------------------------------------------------
@@ -200,9 +168,7 @@ function loadAllProperties(
 /**
  * Resolves Spring-style placeholders.
  *
- * Supported:
- * - ${key}
- * - ${key:default}
+ * Supported: ${key}
  */
 function resolveValue(
   valueAttr: string | null,
@@ -214,19 +180,30 @@ function resolveValue(
   // <property name="url" key="base.url"/>
   // ---------------------------------------------------------------------------
   if (keyAttr) {
-    return props.get(keyAttr) ?? `MISSING:${keyAttr}`;
+    return (
+      props.get(keyAttr) ??
+      (() => {
+        throw new Error(`MISSING:${keyAttr}`);
+      })()
+    );
   }
 
   // ---------------------------------------------------------------------------
   // Placeholder replacement:
   // value="${base.url}"
-  // value="${base.url:https://default.com}"
   // ---------------------------------------------------------------------------
   if (valueAttr) {
+    // FIX 1: Cleaned up the broken nested regex quantifiers
     return valueAttr.replace(
-      /\$\{([^}]+?)(?::([^}]*))?}/g,
-      (_, key: string, fallback?: string) => {
-        return props.get(key) ?? fallback ?? `MISSING:${key}`;
+      /\$\{([^}]+)}/g,
+      (_, key: string) => {
+        // FIX 2: Corrected the error variable to reference 'key', not 'keyAttr'
+        return (
+          props.get(key) ??
+          (() => {
+            throw new Error(`MISSING:${key}`);
+          })()
+        );
       },
     );
   }
@@ -234,56 +211,49 @@ function resolveValue(
   return '';
 }
 
-function parseXmlWithImports(
-  xmlPath: string,
-  variables: Record<string, string | undefined>,
+function parseXml(
+  metaUrl: string,
+  xmlPaths: string[],
 ): Document {
-  const xml = fs.readFileSync(xmlPath, 'utf-8');
-
-  const doc = new DOMParser().parseFromString(xml, 'text/xml');
-
-  const importNodes = xpath.select('//import[@resource]', doc) as Element[];
-
-  for (const importNode of importNodes) {
-    const resource = importNode.getAttribute('resource');
-
-    if (!resource) {
-      continue;
-    }
-
-    const importPath = path.resolve(
-      path.dirname(xmlPath),
-      resolveResource(resource, variables),
-    );
-
-    if (!fs.existsSync(importPath)) {
-      console.warn(`[BeanLoader] Imported file not found: ${importPath}`);
-
-      continue;
-    }
-
-    const importedDoc = parseXmlWithImports(importPath, variables);
-
-    const importedBeans = xpath.select('//bean', importedDoc) as Element[];
-
-    const roots = xpath.select('/*', doc) as Node[];
-
-    const beansRoot = roots[0] as Element | null;
-
-    if (!beansRoot) {
-      console.warn(`[BeanLoader] No root element found in: ${xmlPath}`);
-
-      continue;
-    }
-
-    for (const bean of importedBeans) {
-      const adopted = doc.importNode(bean, true);
-
-      beansRoot.appendChild(adopted);
-    }
+  if (xmlPaths.length === 0) {
+    throw new Error('[BeanLoader] xmlPaths missing');
   }
 
-  return doc;
+  // 1. Map: Resolve all paths
+  const paths = xmlPaths.map((xmlPath) => resolveFromModule(metaUrl, xmlPath));
+
+  // 2. Extract the environment first
+  const baseXml = fs.readFileSync(paths[0], 'utf-8');
+  const doc = new DOMParser().parseFromString(baseXml, 'text/xml');
+  const roots = xpath.select('/*', doc) as Node[];
+  const beansRoot = roots[0] as Element | null;
+
+  if (!beansRoot) {
+    throw new Error(`[BeanLoader] No root element found in primary XML`);
+  }
+
+  // 3. Reduce: Stream through the remaining paths and accumulate them into the host doc
+  return paths.slice(1).reduce((mainDoc, currentPath) => {
+    if (!fs.existsSync(currentPath)) {
+      console.warn(`[BeanLoader] Imported file not found: ${currentPath}`);
+      return mainDoc;
+    }
+
+    const credentialXml = fs.readFileSync(currentPath, 'utf-8');
+    const credentialsDoc = new DOMParser().parseFromString(
+      credentialXml,
+      'text/xml',
+    );
+    const credentialBeans = xpath.select('//bean', credentialsDoc) as Element[];
+
+    // adopt and append beans
+    for (const bean of credentialBeans) {
+      const adopted = mainDoc.importNode(bean, true);
+      beansRoot.appendChild(adopted);
+    }
+
+    return mainDoc;
+  }, doc);
 }
 
 function resolveBeanKind(
@@ -297,8 +267,8 @@ function resolveBeanKind(
 
   if (
     normalized === Credential.name ||
-    normalized.endsWith('.Credential') ||
-    normalized.endsWith('.Credentials')
+    normalized.endsWith('Credential') ||
+    normalized.endsWith('Credentials')
   ) {
     return 'credential';
   }
@@ -323,143 +293,12 @@ function instantiateBean(
   if (kind === 'credential') {
     return new Credential(
       resolved['username'],
-      resolved['password'],
-      resolved['secretKey'],
+      decryptValueFromEnv(resolved['password']),
+      decryptValueFromEnv(resolved['secretKey']),
     );
   }
 
   throw new Error(`[BeanLoader] Unknown bean class: "${className}"`);
-}
-
-// -----------------------------------------------------------------------------
-// Import Resource Resolution
-// -----------------------------------------------------------------------------
-
-/**
- * Matches:
- * {TARGET:QAT}
- */
-const PLACEHOLDER_REGEX = /\{([^:}]+):([^}]+)}/g;
-
-/**
- * Resolves environment placeholders inside import resources.
- *
- * Example:
- * {TARGET:QAT}Credential.xml
- *
- * TARGET=DEV
- * -> DEVCredential.xml
- *
- * Missing TARGET
- * -> QATCredential.xml
- */
-function resolveResource(
-  resource: string,
-  variables: Record<string, string | undefined>,
-): string {
-  return resource.replace(
-    PLACEHOLDER_REGEX,
-    (_, envKey: string, defaultVal: string) => {
-      return variables[envKey] ?? defaultVal;
-    },
-  );
-}
-
-// -----------------------------------------------------------------------------
-// Public API
-// -----------------------------------------------------------------------------
-
-/**
- * Loads and resolves a bean from XML metadata.
- *
- * Features:
- * - XML bean lookup
- * - Recursive imports
- * - .properties merging
- * - Placeholder resolution
- * - Typed bean creation
- *
- * Supported bean classes:
- * - Environment
- * - Credential
- *
- * Example:
- *
- * const env = getBeanById<Environment>(
- *   import.meta.url,
- *   {
- *     xmlPath: 'resources/beans.xml',
- *     propertiesPaths: [
- *       'resources/application.properties'
- *     ]
- *   },
- *   'environment'
- * );
- */
-export function getBeanById<T extends Environment | Credential>(
-  metaUrl: string,
-  options: BeanLoaderOptions,
-  beanId: string,
-): T {
-  const { xmlPath, propertiesPaths, variables } = options;
-  const runtimeVariables = { ...process.env, ...variables };
-
-  const resolvedXmlPath = resolveFromModule(metaUrl, xmlPath);
-
-  if (!fs.existsSync(resolvedXmlPath)) {
-    throw new Error(`[BeanLoader] XML file not found: ${xmlPath}`);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Parse XML with recursive imports
-  // ---------------------------------------------------------------------------
-  const doc = parseXmlWithImports(resolvedXmlPath, runtimeVariables);
-
-  // ---------------------------------------------------------------------------
-  // Load properties
-  // ---------------------------------------------------------------------------
-  const props = loadAllProperties(metaUrl, propertiesPaths);
-
-  // ---------------------------------------------------------------------------
-  // Find bean node
-  // ---------------------------------------------------------------------------
-  const beansRoot = (xpath.select('/*', doc) as Node[])[0] as Element;
-
-  const nodes = xpath.select(`//bean[@id="${beanId}"]`, beansRoot) as Element[];
-
-  if (!nodes.length) {
-    throw new Error(`[BeanLoader] Bean with id="${beanId}" not found.`);
-  }
-
-  const beanNode = nodes[0];
-
-  // ---------------------------------------------------------------------------
-  // Resolve bean properties
-  // ---------------------------------------------------------------------------
-  const propNodes = xpath.select('property', beanNode) as Element[];
-
-  const resolved: Record<string, string> = {};
-
-  for (const prop of propNodes) {
-    const name = prop.getAttribute('name');
-
-    if (!name) {
-      continue;
-    }
-
-    resolved[name] = resolveValue(
-      prop.getAttribute('value'),
-      prop.getAttribute('key'),
-      props,
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Create typed instance
-  // ---------------------------------------------------------------------------
-  const className = beanNode.getAttribute('class') ?? '';
-
-  return instantiateBean(className, resolved) as T;
 }
 
 /**
@@ -470,20 +309,12 @@ export function getBeanById<T extends Environment | Credential>(
  */
 export function loadBeanContext(
   metaUrl: string,
-  options: BeanContextOptions,
+  options: BeanLoaderOptions,
 ): BeanContext {
-  const { xmlPath, propertiesPaths, variables } = options;
-  const runtimeVariables = { ...process.env, ...variables };
-  const envVarName = options.envVarName ?? 'env';
-  const defaultEnv = options.defaultEnv ?? 'qat';
-  const selectedEnv = runtimeVariables[envVarName] ?? defaultEnv;
-  const resolvedXmlPath = resolveFromModule(metaUrl, xmlPath);
+  const { xmlPaths, propertiesPaths } = options;
+  const selectedEnv = process.env.env ?? options.env ?? 'qat';
 
-  if (!fs.existsSync(resolvedXmlPath)) {
-    throw new Error(`[BeanLoader] XML file not found: ${xmlPath}`);
-  }
-
-  const doc = parseXmlWithImports(resolvedXmlPath, runtimeVariables);
+  const doc = parseXml(metaUrl, xmlPaths);
   const props = loadAllProperties(metaUrl, propertiesPaths);
   const beanNodes = xpath.select('//bean', doc) as Element[];
 
@@ -491,11 +322,11 @@ export function loadBeanContext(
   const credentials: Record<string, Credential> = {};
 
   for (const beanNode of beanNodes) {
-    const beanId = beanNode.getAttribute('id');
+    const beanName = beanNode.getAttribute('name');
     const className = beanNode.getAttribute('class') ?? '';
     const kind = resolveBeanKind(className);
 
-    if (!beanId || !kind) {
+    if (!beanName || !kind) {
       continue;
     }
 
@@ -519,27 +350,23 @@ export function loadBeanContext(
     const bean = instantiateBean(className, resolved);
 
     if (kind === 'environment') {
-      environments[beanId] = bean as Environment;
+      environments[beanName] = bean as Environment;
       continue;
     }
 
-    credentials[beanId] = bean as Credential;
+    credentials[beanName] = bean as Credential;
   }
 
   const environment = environments[selectedEnv];
 
   if (!environment) {
     throw new Error(
-      `[BeanLoader] Environment bean with id="${selectedEnv}" not found.`,
+      `[BeanLoader] Environment bean with name="${selectedEnv}" not found.`,
     );
   }
 
   return {
     env: selectedEnv,
-    variables: {
-      [envVarName]: process.env[envVarName],
-      'target.cred': runtimeVariables['target.cred'],
-    },
     environments,
     credentials,
     getEnvironment(): Environment {

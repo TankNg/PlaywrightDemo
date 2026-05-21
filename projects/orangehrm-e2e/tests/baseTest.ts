@@ -1,17 +1,16 @@
-import { createBaseTest, expect } from '@core-playwright/core';
+import {
+  BeanContext,
+  BeanLoaderOptions,
+  loadBeanContext,
+} from '@core-playwright/core';
 
-export const test = createBaseTest({
-  metaUrl: import.meta.url,
-  xmlPath: 'config/Setting.xml',
+const BEAN_CONTEXT: BeanLoaderOptions = {
+  xmlPaths: ['config/Setting.xml', 'config/QATCredential.xml'],
   propertiesPaths: [
     'config/Environment.properties',
     'config/QATCredential.properties',
   ],
-  defaultEnv: 'qat',
-  debug: {
-    env: 'qat',
-    credTarget: 'QAT1',
-  },
-});
+  env: 'qat',
+};
 
-export { expect };
+export const ctx: BeanContext = loadBeanContext(import.meta.url, BEAN_CONTEXT);
