@@ -62,15 +62,20 @@ export function decryptValue(plainText: string): string;
 /**
  * Decrypts AES-256-GCM encrypted text.
  */
-export function decryptValue(encryptedValue: string, secretKey?: string): string {
+export function decryptValue(
+  encryptedValue: string,
+  secretKey?: string,
+): string | undefined {
+  if (encryptedValue == undefined) {
+    return undefined;
+  }
   if (encryptedValue.length < 40) {
     return encryptedValue;
   }
 
   const parts = encryptedValue.split(':');
   const key = secretKey ?? getEncryptionKeyFromEnv();
-  const [iv, authTag, encrypted] =
-    parts.length === 5 ? parts.slice(2) : parts;
+  const [iv, authTag, encrypted] = parts.length === 5 ? parts.slice(2) : parts;
 
   if (!iv || !authTag || !encrypted || parts.length < 3 || parts.length > 5) {
     throw new Error('Invalid encrypted value format.');
